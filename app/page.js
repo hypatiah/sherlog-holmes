@@ -26,6 +26,7 @@ function InsightCard({ title, value }) {
 export default function VisitorDashboard() {
   const [visitors, setVisitors] = useState([]);
   const [filtered, setFiltered] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
@@ -34,10 +35,12 @@ export default function VisitorDashboard() {
 
   useEffect(() => {
     const fetchVisitors = async () => {
+      setLoading(true);
       const res = await fetch('/api/visitors');
       const data = await res.json();
       setVisitors(data);
       setFiltered(data);
+      setLoading(false);
     };
     fetchVisitors();
   }, []);
@@ -64,14 +67,12 @@ export default function VisitorDashboard() {
   const companies = [...new Set(visitors.map(v => v.company))].filter(Boolean);
   const locations = [...new Set(visitors.map(v => v.location))].filter(Boolean);
 
-  // Build trend data per day per company (last 14 days)
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (13 - i));
     return d.toISOString().split('T')[0];
   });
 
-  // Group by company/date
   const companyTrendMap = {};
   filtered.forEach(v => {
     const date = new Date(v.timestamp).toISOString().split('T')[0];
@@ -83,13 +84,7 @@ export default function VisitorDashboard() {
     companyTrendMap[company][date] = (companyTrendMap[company][date] || 0) + 1;
   });
 
-  const companyColors = [
-    '#4B382A', // detectiveBrown
-    '#B33A3A', // clueRed
-    '#7D7D7D', // fogGray
-    '#6554C0', // deep purple accent
-    '#0052CC', // deep blue accent
-  ];
+  const companyColors = ['#4B382A', '#B33A3A', '#7D7D7D', '#6554C0', '#0052CC'];
 
   const trendData = {
     labels: days,
@@ -101,10 +96,9 @@ export default function VisitorDashboard() {
       fill: true,
       tension: 0.3,
       pointRadius: 3,
-    }))
+    })),
   };
 
-  // Additional Insights
   const now = new Date();
   const past7Days = new Date(now);
   past7Days.setDate(now.getDate() - 7);
@@ -145,71 +139,80 @@ export default function VisitorDashboard() {
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     .slice(0, 10);
 
-  
-function formatSeconds(seconds) {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}m ${secs}s`;
-}
+  function formatSeconds(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  }
 
   return (
-    <main className="bg-parchment min-h-screen p-8 max-w-7xl mx-auto font-serifMystery text-detectiveBrown">
-      <h1 className="text-5xl font-bold mb-8 border-b-4 border-clueRed pb-2">SherLog Holmes</h1>
-      <h3>Solving the mysteries of your website visitors, one case at a time.</h3>
+    <main className="bg-parchment min-h-screen p-6 sm:p-8 max-w-7xl mx-auto font-serifMystery text-detectiveBrown">
+      <header className="mb-10">
+        <h1 className="text-5xl font-extrabold mb-2 border-b-4 border-clueRed pb-2">SherLog Holmes</h1>
+        <p className="text-lg text-fogGray">Solving the mysteries of your website visitors, one case at a time.</p>
+      </header>
 
-      <h2>Visitor Insights Dashboard</h2>
-      {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <input
-          type="text"
-          placeholder="Search company..."
-          className="border border-fogGray p-3 rounded-md shadow-subtleGlow focus:outline-none focus:ring-2 focus:ring-clueRed"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className="border border-fogGray p-3 rounded-md shadow-subtleGlow focus:outline-none focus:ring-2 focus:ring-clueRed"
-          value={companyFilter}
-          onChange={(e) => setCompanyFilter(e.target.value)}
-        >
-          <option value="">All Companies</option>
-          {companies.map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        <select
-          className="border border-fogGray p-3 rounded-md shadow-subtleGlow focus:outline-none focus:ring-2 focus:ring-clueRed"
-          value={locationFilter}
-          onChange={(e) => setLocationFilter(e.target.value)}
-        >
-          <option value="">All Locations</option>
-          {locations.map(l => (
-            <option key={l} value={l}>{l}</option>
-          ))}
-        </select>
-        <div className="flex gap-2">
+      {/* Sticky Filters Panel */}
+      <div className="sticky top-0 z-10 bg-parchment py-4 border-b border-detectiveBrown mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <input
-            type="date"
-            className="border border-fogGray p-3 rounded-md shadow-subtleGlow focus:outline-none focus:ring-2 focus:ring-clueRed w-full"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            type="text"
+            placeholder="🔍 Search company..."
+            className="border border-fogGray p-3 rounded-md shadow-subtleGlow focus:outline-none focus:ring-2 focus:ring-clueRed"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-          <input
-            type="date"
-            className="border border-fogGray p-3 rounded-md shadow-subtleGlow focus:outline-none focus:ring-2 focus:ring-clueRed w-full"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
+          <select
+            className="border border-fogGray p-3 rounded-md shadow-subtleGlow focus:outline-none focus:ring-2 focus:ring-clueRed"
+            value={companyFilter}
+            onChange={(e) => setCompanyFilter(e.target.value)}
+          >
+            <option value="">All Companies</option>
+            {companies.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <select
+            className="border border-fogGray p-3 rounded-md shadow-subtleGlow focus:outline-none focus:ring-2 focus:ring-clueRed"
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+          >
+            <option value="">All Locations</option>
+            {locations.map(l => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              className="border p-3 rounded-md shadow-subtleGlow w-full"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <input
+              type="date"
+              className="border p-3 rounded-md shadow-subtleGlow w-full"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
+      {/* Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <InsightCard title="Total Visits" value={totalVisits} />
+        <InsightCard title="Avg Time on Site" value={formatSeconds(avgTimeOnSite)} />
+        <InsightCard title="Unique Companies" value={new Set(filtered.map(v => v.company)).size} />
+      </div>
+
       {/* Top Companies */}
-      <section className="mb-10">
+      <section className="mb-12">
         <h2 className="text-2xl font-semibold mb-4 border-b border-clueRed pb-1">Top Visiting Companies (Last 7 Days)</h2>
-        <ul className="bg-parchment border border-detectiveBrown rounded-lg shadow-subtleGlow p-4 space-y-2">
+        <ul className="bg-parchment border border-detectiveBrown rounded-lg shadow-subtleGlow p-4 space-y-2 text-lg">
           {topCompanies.map(([company, stats], i) => (
-            <li key={i} className="flex justify-between text-lg">
-              <span><b>{company}</b></span>
+            <li key={i} className="flex justify-between hover:bg-fogGray/20 p-2 rounded transition">
+              <span className="font-bold cursor-pointer text-clueRed hover:underline">{company}</span>
               <span> {stats.count} visits | avg time: {formatSeconds(Math.round(stats.time / stats.count))}</span>
             </li>
           ))}
@@ -217,74 +220,66 @@ function formatSeconds(seconds) {
       </section>
 
       {/* Visit Trends */}
-      <section className="bg-parchment border border-detectiveBrown p-6 rounded-lg shadow-subtleGlow mb-10">
-        <h2 className="text-2xl font-semibold text-detectiveBrown mb-6 border-b border-clueRed pb-2">Visit Trends by Company (Last 14 Days)</h2>
-        <Line
-          data={trendData}
-          options={{
-            responsive: true,
-            plugins: {
-              legend: {
-                position: 'top',
-                labels: { color: '#4B382A', font: { family: 'Georgia, serif' } },
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold mb-4 border-b border-clueRed pb-1">Visit Trends by Company (Last 14 Days)</h2>
+        <div className="bg-parchment border border-detectiveBrown p-4 rounded-lg shadow-subtleGlow">
+          <Line
+            data={trendData}
+            options={{
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: 'top',
+                  labels: { color: '#4B382A', font: { family: 'Georgia, serif' } },
+                },
+                tooltip: {
+                  mode: 'index',
+                  intersect: false,
+                  backgroundColor: '#B33A3A',
+                  titleFont: { family: 'Georgia, serif', weight: 'bold' },
+                  bodyFont: { family: 'Georgia, serif' },
+                },
               },
-              tooltip: {
-                mode: 'index',
+              interaction: {
+                mode: 'nearest',
+                axis: 'x',
                 intersect: false,
-                backgroundColor: '#B33A3A',
-                titleFont: { family: 'Georgia, serif', weight: 'bold' },
-                bodyFont: { family: 'Georgia, serif' },
               },
-            },
-            interaction: {
-              mode: 'nearest',
-              axis: 'x',
-              intersect: false,
-            },
-            scales: {
-              y: {
-                beginAtZero: true,
-                title: {
-                  display: true,
-                  text: 'Visits',
-                  color: '#4B382A',
-                  font: { family: 'Georgia, serif' },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: 'Visits',
+                    color: '#4B382A',
+                    font: { family: 'Georgia, serif' },
+                  },
+                  ticks: { color: '#4B382A' },
+                  grid: { color: '#A89F91' },
                 },
-                ticks: {
-                  color: '#4B382A',
-                  font: { family: 'Georgia, serif' },
-                },
-                grid: {
-                  color: '#A89F91',
+                x: {
+                  title: {
+                    display: true,
+                    text: 'Date',
+                    color: '#4B382A',
+                    font: { family: 'Georgia, serif' },
+                  },
+                  ticks: { color: '#4B382A' },
+                  grid: { color: '#A89F91' },
                 },
               },
-              x: {
-                title: {
-                  display: true,
-                  text: 'Date',
-                  color: '#4B382A',
-                  font: { family: 'Georgia, serif' },
-                },
-                ticks: {
-                  color: '#4B382A',
-                  font: { family: 'Georgia, serif' },
-                },
-                grid: {
-                  color: '#A89F91',
-                },
-              },
-            },
-          }}
-        />
+            }}
+          />
+        </div>
       </section>
 
       {/* Most Viewed Pages */}
-      <section className="mb-10">
+      <section className="mb-12">
         <h2 className="text-2xl font-semibold mb-4 border-b border-clueRed pb-1">Most Viewed Pages</h2>
         <ul className="bg-parchment border border-detectiveBrown rounded-lg shadow-subtleGlow p-4 space-y-2 text-lg">
           {mostViewedPages.map(([url, count], i) => (
             <li key={i} className="flex justify-between">
-              <span><b>{url}</b></span>
+              <span className="truncate"><b>{url}</b></span>
               <span> {count} views</span>
             </li>
           ))}
@@ -292,7 +287,7 @@ function formatSeconds(seconds) {
       </section>
 
       {/* Top Locations */}
-      <section className="mb-10">
+      <section className="mb-12">
         <h2 className="text-2xl font-semibold mb-4 border-b border-clueRed pb-1">Top Visitor Locations</h2>
         <ul className="bg-parchment border border-detectiveBrown rounded-lg shadow-subtleGlow p-4 space-y-2 text-lg">
           {topLocations.map(([location, count], i) => (
@@ -304,27 +299,26 @@ function formatSeconds(seconds) {
         </ul>
       </section>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <InsightCard title="Total Visits" value={totalVisits} />
-        <InsightCard title="Avg Time on Site" value={`${avgTimeOnSite} sec`} />
-        <InsightCard title="Unique Companies" value={new Set(filtered.map(v => v.company)).size} />
-      </div>
-
       {/* Recent Activity Feed */}
-      <section className="mb-10">
+      <section className="mb-16">
         <h2 className="text-2xl font-semibold mb-4 border-b border-clueRed pb-1">Recent Visitor Activity</h2>
-        <ul className="bg-parchment border border-detectiveBrown rounded-lg shadow-subtleGlow p-4 space-y-3 text-lg">
-          {recentActivity.map((v, i) => (
-            <li key={i} className="border-b border-detectiveBrown pb-2 last:border-none">
-              <div className="flex justify-between font-semibold">
-                <span>{v.company || 'Unknown'} ({v.location || 'Unknown'})</span>
-                <span> {new Date(v.timestamp).toLocaleString()}</span>
-              </div>
-              <div className="text-clueRed"> Visited: {v.url} | {formatSeconds(v.timeOnPage)} on site</div>
-            </li>
-          ))}
-        </ul>
+        {loading ? (
+          <p className="text-center text-lg text-fogGray">Loading activity...</p>
+        ) : (
+          <ul className="bg-parchment border border-detectiveBrown rounded-lg shadow-subtleGlow p-4 space-y-3 text-lg">
+            {recentActivity.map((v, i) => (
+              <li key={i} className="border-b border-detectiveBrown pb-2 last:border-none">
+                <div className="flex justify-between font-semibold">
+                  <span><b>{v.company || 'Unknown'} ({v.location || 'Unknown'})</b></span>
+                  <span> {new Date(v.timestamp).toLocaleString()}</span>
+                </div>
+                <div className="text-clueRed">
+                  Visited: <span className="font-mono">{v.url}</span> | {formatSeconds(v.timeOnPage)} on site
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </main>
   );
