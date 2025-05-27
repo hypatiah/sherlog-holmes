@@ -9,7 +9,15 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="bg-parchment font-serifMystery text-detectiveBrown min-h-screen">
+        {children}
+      </body>
     </html>
   );
 }
